@@ -1,0 +1,582 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Techno Quiz | Kartikeya Rindani Memorial Competitions 2026</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        modernBlue: '#002147',
+                        modernGold: '#facc15', 
+                        modernCrimson: '#ef4444',
+                        vedic: { 800: '#1a2236', 900: '#0c1425', 950: '#020617' }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@700;900&family=Plus+Jakarta+Sans:wght@400;600;700;800&family=Playfair+Display:ital,wght@0,700;1,700&display=swap');
+        
+        body { 
+            font-family: 'Plus Jakarta Sans', sans-serif; 
+            transition: background-color 0.4s ease; 
+            height: 100vh;
+            margin: 0;
+            overflow: hidden;
+        }
+        .ancient-font { font-family: 'Cinzel', serif; }
+        .pes-font { font-family: 'Playfair Display', serif; }
+        
+        .poster-title {
+            color: #facc15;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+            font-weight: 900;
+        }
+
+        .celebration-bg {
+            background: radial-gradient(circle, #002147 0%, #020617 100%);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .confetti {
+            position: absolute;
+            width: 10px;
+            height: 10px;
+            animation: fall 4s linear infinite;
+            z-index: 50;
+        }
+
+        @keyframes fall {
+            0% { transform: translateY(-10vh) rotate(0deg); opacity: 1; }
+            100% { transform: translateY(110vh) rotate(720deg); opacity: 0; }
+        }
+
+        .winner-card {
+            animation: popIn 1s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        @keyframes popIn {
+            0% { transform: scale(0.5); opacity: 0; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+
+        .gold-glow {
+            box-shadow: 0 0 50px rgba(250, 204, 21, 0.5);
+            animation: glowPulse 2s infinite alternate;
+        }
+
+        .rindani-logo-circle {
+            border: 4px solid #facc15;
+            box-shadow: 0 0 30px rgba(250, 204, 21, 0.4);
+            background: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            flex-shrink: 0;
+            transition: transform 0.3s ease;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar { width: 8px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: rgba(0, 0, 0, 0.1); border-radius: 10px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #facc15; border-radius: 10px; }
+
+        .score-table th {
+            @apply px-4 py-2 bg-modernBlue text-modernGold font-black uppercase text-xl md:text-3xl tracking-widest border-b-2 border-modernGold/20;
+        }
+        .score-table td {
+            @apply px-4 py-0.5 border-b border-modernBlue/10 dark:border-white/5 font-black text-5xl md:text-8xl;
+        }
+    </style>
+</head>
+<body class="bg-slate-50 dark:bg-vedic-950 text-slate-900 dark:text-slate-100">
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useRef, useMemo } = React;
+
+        /**
+         * Ref-based Icon Component to prevent DOM reconciliation errors with Lucide.
+         */
+        const Icon = ({ name, size = 20, className = "" }) => {
+            const containerRef = useRef(null);
+
+            useEffect(() => {
+                if (!containerRef.current || !window.lucide) return;
+                containerRef.current.innerHTML = '';
+                const iconElement = document.createElement('i');
+                iconElement.setAttribute('data-lucide', name);
+                iconElement.className = className;
+                iconElement.style.width = `${size}px`;
+                iconElement.style.height = `${size}px`;
+                iconElement.style.display = 'inline-block';
+                containerRef.current.appendChild(iconElement);
+                window.lucide.createIcons({
+                    root: containerRef.current,
+                    nameAttr: 'data-lucide'
+                });
+            }, [name, size, className]);
+
+            return (
+                <span 
+                    ref={containerRef} 
+                    className="inline-flex items-center justify-center shrink-0"
+                    style={{ width: size, height: size }}
+                />
+            );
+        };
+
+        const COLLEGE_LOGO_URL = "modernlogo.png"; 
+        const RINDANI_LOGO_URL = "rindanilogo.png"; 
+
+        const TEAMS = [
+            { id: 'chankya', name: 'CHANAKYA', banner: "chanakya.jpeg", icon: "scroll" },
+            { id: 'aryabhatta', name: 'ARYABHATTA', banner: "aryabhatta.jpeg", icon: "orbit" },
+            { id: 'nalanda', name: 'NALANDA', banner: "nalanda.jpeg", icon: "library" },
+            { id: 'takshshila', name: 'TAKSHASHILA', banner: "takshashila.jpeg", icon: "book-open" },
+            { id: 'kalidas', name: 'KALIDASA', banner: "kalidas.jpeg", icon: "feather" },
+        ];
+
+        const ROUNDS = [
+            { id: 0, name: 'Round 1: Think Tank', shortName: 'R1', icon: 'brain', questions: 10, marks: 5, noPenalty: true, noPass: true },
+            { id: 1, name: 'Round 2: Fast Track', shortName: 'R2', icon: 'zap', questions: 10, marks: 10, passing: true, noPenalty: true },
+            { id: 2, name: 'Round 3: Think and Guess', shortName: 'R3', icon: 'layout-grid', questions: 5, isGuess: true, noPenalty: true },
+            { id: 3, name: 'Round 4: Mind Marathon', shortName: 'R4', icon: 'timer', questions: 5, marks: 5, penaltyValue: -2 },
+            { id: 4, name: 'Round 5: Code-thon', shortName: 'R5', icon: 'code', questions: 5, penaltyValue: -5 },
+            { id: 5, name: 'Round 6: Rapid Recall', shortName: 'R6', icon: 'rotate-ccw', questions: 1, isRapid: true, noPenalty: true },
+        ];
+
+        const PASS_VALUES = [10, 7, 5, 3, 1];
+
+        const App = () => {
+            const [appState, setAppState] = useState('welcome'); 
+            const [darkMode, setDarkMode] = useState(true);
+            const [currentRoundIndex, setCurrentRoundIndex] = useState(0);
+            const [currentQuestionNumber, setCurrentQuestionNumber] = useState(1);
+            const [passCount, setPassCount] = useState(0); 
+            const [subQuestionIndex, setSubQuestionIndex] = useState(0);
+            
+            const [scores, setScores] = useState(TEAMS.reduce((acc, team) => ({ ...acc, [team.id]: 0 }), {}));
+            const [roundScores, setRoundScores] = useState(() => {
+                const initial = {};
+                ROUNDS.forEach(r => { initial[r.name] = TEAMS.reduce((tAcc, team) => ({ ...tAcc, [team.id]: 0 }), {}); });
+                return initial;
+            });
+
+            const [history, setHistory] = useState([]);
+            const [selectedTeam, setSelectedTeam] = useState(null); 
+
+            useEffect(() => {
+                if (darkMode) document.documentElement.classList.add('dark');
+                else document.documentElement.classList.remove('dark');
+            }, [darkMode]);
+
+            const currentRound = ROUNDS[currentRoundIndex] || ROUNDS[0];
+
+            const currentPotentialPoints = currentRound.isRapid 
+                ? 1 
+                : (currentRound.isGuess ? 5 : (currentRound.passing ? PASS_VALUES[Math.min(passCount, PASS_VALUES.length - 1)] : (currentRound.marks || 10)));
+
+            const rapidCount = useMemo(() => {
+                if (!selectedTeam || !currentRound.isRapid) return 0;
+                return history.filter(h => h.round === currentRound.name && h.team === selectedTeam && h.type === 'correct').length;
+            }, [history, selectedTeam, currentRound.name, currentRound.isRapid]);
+
+            const nextInquiry = () => {
+                if (currentQuestionNumber < currentRound.questions) {
+                    setCurrentQuestionNumber(prev => prev + 1);
+                    setPassCount(0);
+                    setSubQuestionIndex(0);
+                } else {
+                    setAppState('leaderboard');
+                }
+            };
+
+            const nextRound = () => {
+                if (currentRoundIndex < ROUNDS.length - 1) {
+                    setCurrentRoundIndex(prev => prev + 1);
+                    setCurrentQuestionNumber(1);
+                    setPassCount(0);
+                    setSubQuestionIndex(0);
+                    setAppState('quiz');
+                } else {
+                    setAppState('gameOver');
+                }
+            };
+
+            const handleScore = (isCorrect) => {
+                if (!selectedTeam) return;
+                let points = 0;
+                if (isCorrect) points = currentPotentialPoints;
+                else points = ([0, 1, 2, 5].includes(currentRound.id)) ? 0 : (currentRound.id === 3 ? -2 : -5);
+                
+                setScores(prev => ({ ...prev, [selectedTeam]: (prev[selectedTeam] || 0) + points }));
+                setRoundScores(prev => {
+                    const roundName = currentRound.name;
+                    const updatedRound = { ...(prev[roundName] || {}) };
+                    updatedRound[selectedTeam] = (updatedRound[selectedTeam] || 0) + points;
+                    return { ...prev, [roundName]: updatedRound };
+                });
+
+                setHistory(prev => [{
+                    round: currentRound.name,
+                    question: currentQuestionNumber,
+                    subQuestion: subQuestionIndex,
+                    team: selectedTeam,
+                    points,
+                    type: isCorrect ? 'correct' : 'wrong',
+                    passCountAtTime: passCount,
+                }, ...prev]);
+
+                if (currentRound.isRapid) return;
+
+                if (currentRound.isGuess) {
+                    if (subQuestionIndex < 2) {
+                        setSubQuestionIndex(prev => prev + 1);
+                    } else {
+                        setSelectedTeam(null);
+                        setSubQuestionIndex(0);
+                        nextInquiry();
+                    }
+                } else if (isCorrect) {
+                    setSelectedTeam(null);
+                    nextInquiry();
+                } else {
+                    if (currentRound.passing && passCount < PASS_VALUES.length - 1) { 
+                        setPassCount(prev => prev + 1); 
+                        setSelectedTeam(null); 
+                    }
+                    else { 
+                        setSelectedTeam(null); 
+                        nextInquiry(); 
+                    }
+                }
+            };
+
+            const handlePass = () => {
+                if (currentRound.id === 1 && passCount < PASS_VALUES.length - 1) {
+                    setPassCount(prev => prev + 1);
+                    setSelectedTeam(null);
+                }
+            };
+
+            const undo = () => {
+                if (history.length === 0) return;
+                const last = history[0];
+                setScores(prev => ({ ...prev, [last.team]: (prev[last.team] || 0) - last.points }));
+                setRoundScores(prev => {
+                    const updatedRound = { ...(prev[last.round] || {}) };
+                    updatedRound[last.team] = (updatedRound[last.team] || 0) - last.points;
+                    return { ...prev, [last.round]: updatedRound };
+                });
+                if (last.round === currentRound.name) {
+                    setCurrentQuestionNumber(last.question);
+                    setSubQuestionIndex(last.subQuestion || 0);
+                    setPassCount(last.passCountAtTime || 0);
+                }
+                setHistory(prev => prev.slice(1));
+            };
+
+            const RindaniPortrait = ({ size = "w-40 h-40", showText = true }) => (
+                <div className={`${size} rounded-full rindani-logo-circle`}>
+                    <img 
+                        src={RINDANI_LOGO_URL} 
+                        alt="Rindani Logo" 
+                        className="w-full h-full object-contain p-1"
+                        onError={(e) => {
+                            e.target.onerror = null;
+                            e.target.style.display = 'none';
+                            e.target.nextSibling.style.display = 'flex';
+                        }}
+                    />
+                    <div style={{display: 'none'}} className="w-full h-full flex-col items-center justify-center text-center p-2">
+                        <div className="w-10 h-10 bg-modernBlue/10 rounded-full flex items-center justify-center mb-1">
+                             <Icon name="user" className="text-modernBlue" size={20} />
+                        </div>
+                        {showText && <span className="text-[7px] font-black uppercase text-modernBlue leading-tight">Kartikeya Rindani <br/> Memorial</span>}
+                    </div>
+                </div>
+            );
+
+            const CollegeIdentity = ({ large = false }) => (
+                <div className="flex flex-col items-center shrink-0">
+                    <div className="flex items-center gap-4 md:gap-6">
+                        <img src={COLLEGE_LOGO_URL} alt="Modern Logo" className={large ? "h-32 md:h-48 w-auto object-contain" : "h-16 md:h-24 w-auto object-contain"} />
+                        <div className="flex flex-col items-start text-left">
+                            <span className={`pes-font italic font-bold text-modernGold ${large ? "text-xl md:text-3xl" : "text-sm md:text-xl"}`}>Progressive Education Society's</span>
+                            <h1 className={`text-modernBlue dark:text-white font-black uppercase tracking-tight leading-none mb-1 ${large ? "text-2xl md:text-6xl" : "text-sm md:text-3xl"}`}>
+                                Modern College of Arts, Science <br className="hidden md:block"/> and Commerce (Autonomous)
+                            </h1>
+                            <p className={`text-slate-600 dark:text-slate-400 font-bold ${large ? "text-sm md:text-xl" : "text-[8px] md:text-sm"}`}>Shivajinagar, Pune 411005</p>
+                        </div>
+                    </div>
+                </div>
+            );
+
+            const MemorialTitle = ({ size = "text-xl", centered = false }) => (
+                <div className={`${centered ? 'text-center' : 'text-left'} shrink-0`}>
+                    <h2 className={`poster-title uppercase leading-tight ancient-font ${size}`}>
+                        Kartikeya Rindani Memorial Scholarships <br/> and Intercollegiate Competitions 2026
+                    </h2>
+                </div>
+            );
+
+            const GlobalHeader = () => (
+                <div className="flex flex-col md:flex-row justify-between items-center gap-4 w-full">
+                    <div className="flex items-center gap-6">
+                        <CollegeIdentity />
+                        <RindaniPortrait size="w-12 h-12 md:w-14 h-14" showText={false} />
+                        <MemorialTitle size="text-xs md:text-lg lg:text-xl" />
+                    </div>
+                    <div className="flex gap-4 shrink-0">
+                        <button onClick={() => setDarkMode(!darkMode)} className="p-3 rounded-full bg-slate-100 dark:bg-white/5 text-modernBlue dark:text-modernGold border border-modernBlue/20 shadow-sm active:scale-90 transition-transform">
+                            <Icon name={darkMode ? 'sun' : 'moon'} size={24}/>
+                        </button>
+                        <button onClick={() => confirm("Reset quiz?") && setAppState('welcome')} className="px-3 py-1 bg-modernCrimson text-white font-black text-[10px] rounded hover:scale-105">RESET</button>
+                    </div>
+                </div>
+            );
+
+            if (appState === 'welcome') {
+                return (
+                    <div className="h-screen flex flex-col items-center justify-between py-6 px-6 bg-slate-50 dark:bg-vedic-950 relative overflow-hidden">
+                        <div className="w-full flex justify-center">
+                            <CollegeIdentity large={true} />
+                        </div>
+
+                        <div className="flex flex-col md:flex-row items-center gap-6 md:gap-10 bg-white/5 p-8 md:p-12 rounded-[3rem] border-2 border-modernGold/20 shadow-2xl backdrop-blur-sm max-w-6xl w-full">
+                            <RindaniPortrait size="w-32 h-32 md:w-56 h-56" />
+                            <div className="flex-1">
+                                <MemorialTitle size="text-xl md:text-4xl" />
+                                <div className="h-1.5 w-16 bg-modernGold mt-4 mb-4 rounded-full"></div>
+                                <p className="text-slate-800 dark:text-slate-300 font-black uppercase text-[10px] md:text-sm tracking-[0.25em] leading-relaxed">
+                                    Department of Computer Science <br/> And Department of Animation
+                                </p>
+                            </div>
+                        </div>
+
+                        <div className="flex flex-col items-center gap-4 w-full mb-4">
+                            <div className="text-center">
+                                <h3 className="text-modernBlue dark:text-white text-lg md:text-xl font-black mb-2 italic pes-font">Welcomes you for</h3>
+                                <div className="bg-modernBlue border-2 border-modernGold px-8 md:px-16 py-3 rounded-full shadow-2xl gold-glow">
+                                    <span className="text-modernGold font-black text-xl md:text-4xl uppercase tracking-tighter">TECHNO&nbsp;&nbsp;&nbsp;QUIZ&nbsp;&nbsp;&nbsp;COMPETITION</span>
+                                </div>
+                            </div>
+                            <button onClick={() => setAppState('quiz')} className="px-12 py-4 rounded-full bg-modernGold text-modernBlue font-black text-lg md:text-2xl shadow-xl hover:scale-110 active:scale-95 transition-all border-b-6 border-black/20 uppercase tracking-tight">START COMPETITION</button>
+                        </div>
+                    </div>
+                );
+            }
+
+            if (appState === 'leaderboard') {
+                const currentRoundName = ROUNDS[currentRoundIndex]?.name || "N/A";
+                return (
+                    <div className="h-screen w-full flex flex-col bg-slate-50 dark:bg-vedic-950 overflow-hidden z-[200] relative">
+                        <header className="p-2 md:p-4 flex flex-col md:flex-row justify-center items-center gap-4 shrink-0 border-b border-modernBlue/10 dark:border-modernGold/10 bg-white/50 dark:bg-white/5 backdrop-blur-md">
+                            <CollegeIdentity />
+                            <RindaniPortrait size="w-12 h-12 md:w-16 h-16" showText={false} />
+                            <MemorialTitle size="text-xs md:text-lg lg:text-xl" />
+                        </header>
+                        
+                        <main className="flex-1 max-w-[98%] mx-auto w-full flex flex-col p-2 md:p-4 min-h-0">
+                            <div className="flex justify-between items-center mb-1 gap-4 border-b-4 border-modernBlue dark:border-modernGold pb-2 shrink-0">
+                                <h3 className="text-3xl md:text-5xl font-black text-modernBlue dark:text-white uppercase italic ancient-font tracking-tighter">Scores</h3>
+                                <div className="flex items-center gap-3">
+                                    <Icon name="award" size={28} className="text-modernCrimson" />
+                                    <span className="text-modernCrimson font-black uppercase text-xl tracking-widest">{currentRoundName} Complete</span>
+                                </div>
+                            </div>
+                            
+                            <div className="flex-1 flex items-center justify-center min-h-0">
+                                <div className="w-full h-full flex flex-col">
+                                    <table className="flex-1 w-full h-full score-table rounded-[2.5rem] overflow-hidden border-collapse bg-white dark:bg-white/5 shadow-2xl">
+                                        <thead>
+                                            <tr>
+                                                <th className="text-left py-2 w-px whitespace-nowrap">Team Name</th>
+                                                {ROUNDS.map(r => (
+                                                    <th key={r.id} className="text-center">{r.shortName}</th>
+                                                ))}
+                                                <th className="text-center bg-modernGold text-modernBlue py-2">Total Score</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {TEAMS.map((team) => (
+                                                <tr key={team.id} className="hover:bg-modernBlue/5 dark:hover:bg-white/5 transition-colors h-1/5">
+                                                    <td className="bg-white dark:bg-vedic-950 border-r dark:border-white/10 align-middle">
+                                                        <div className="flex items-center gap-4">
+                                                            <Icon name={team.icon} size={48} className="text-modernGold" />
+                                                            <span className="uppercase tracking-tight text-modernBlue dark:text-white font-black text-2xl md:text-5xl">{team.name}</span>
+                                                        </div>
+                                                    </td>
+                                                    {ROUNDS.map(r => (
+                                                        <td key={r.id} className="text-center font-mono text-white align-middle text-5xl md:text-8xl">
+                                                            {roundScores[r.name][team.id] || 0}
+                                                        </td>
+                                                    ))}
+                                                    <td className="text-center font-mono text-modernBlue dark:text-modernGold align-middle text-5xl md:text-8xl">
+                                                        {scores[team.id] || 0}
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                            
+                            <div className="pt-4 shrink-0">
+                                <button onClick={nextRound} className="w-full py-5 bg-modernBlue dark:bg-modernGold text-white dark:text-modernBlue font-black text-3xl rounded-[2rem] shadow-xl hover:scale-[1.02] active:scale-95 transition-all flex items-center justify-center gap-4">
+                                    <span className="ancient-font uppercase">Proceed to Next Round</span>
+                                    <Icon name="chevron-right" size={32} />
+                                </button>
+                            </div>
+                        </main>
+                    </div>
+                );
+            }
+
+            if (appState === 'gameOver') {
+                const sortedFinal = [...TEAMS].sort((a, b) => (scores[b.id] || 0) - (scores[a.id] || 0));
+                const winner = sortedFinal[0];
+                return (
+                    <div className="min-h-screen celebration-bg flex flex-col items-center justify-center p-8 text-center overflow-hidden">
+                        {[...Array(50)].map((_, i) => (<div key={i} className="confetti" style={{ left: `${Math.random() * 100}%`, animationDelay: `${Math.random() * 5}s`, backgroundColor: ['#facc15', '#ef4444', '#ffffff', '#3b82f6'][i % 4] }}></div>))}
+                        <div className="winner-card flex flex-col items-center w-full max-w-6xl">
+                            <CollegeIdentity /><div className="my-4 flex items-center gap-8"><RindaniPortrait size="w-20 h-20" showText={false} /><MemorialTitle centered={true} /></div>
+                            <h1 className="text-4xl md:text-7xl font-black text-white uppercase ancient-font mb-6">Congratulations!</h1>
+                            <div className="flex flex-col lg:flex-row items-center gap-8 bg-white/10 p-8 rounded-[4rem] border-4 border-modernGold backdrop-blur-3xl gold-glow shadow-2xl">
+                                <div className="w-56 h-56 bg-slate-900 rounded-[2.5rem] border-4 border-modernGold overflow-hidden flex items-center justify-center shrink-0">
+                                    {winner.banner ? <img src={winner.banner} className="w-full h-full object-contain" /> : <Icon name="trophy" size={100} className="text-modernGold" />}
+                                </div>
+                                <div className="text-center lg:text-left">
+                                    <div className="flex items-center justify-center lg:justify-start gap-3 mb-2"><Icon name="medal" size={40} className="text-modernGold" /><span className="bg-modernCrimson text-white px-8 py-2 rounded-full font-black text-xl">TECHNO&nbsp;&nbsp;&nbsp;QUIZ&nbsp;&nbsp;&nbsp;CHAMPION&nbsp;&nbsp;&nbsp;2026</span></div>
+                                    <h2 className="text-5xl md:text-8xl font-black text-white uppercase mb-2 leading-none">{winner.name}</h2>
+                                    <p className="text-4xl md:text-6xl text-modernGold font-mono font-black italic">SCORE: {scores[winner.id] || 0}</p>
+                                </div>
+                            </div>
+                            <button onClick={() => window.location.reload()} className="mt-8 px-16 py-5 bg-white text-modernBlue font-black text-2xl rounded-2xl hover:bg-modernGold transition-all">RESTART COMPETITION</button>
+                        </div>
+                    </div>
+                );
+            }
+
+            const activeTeamData = selectedTeam ? TEAMS.find(t => t.id === selectedTeam) : null;
+            const penaltyValue = ([0, 1, 2, 5].includes(currentRound.id)) ? 0 : (currentRound.id === 3 ? -2 : -5);
+
+            return (
+                <div className="h-screen flex flex-col bg-slate-50 dark:bg-vedic-950 overflow-hidden relative">
+                    <header className="p-4 bg-white dark:bg-vedic-950 border-b-2 border-modernBlue/20 shrink-0"><GlobalHeader /></header>
+                    <main className="flex-1 p-4 max-w-screen-2xl mx-auto w-full flex flex-col justify-center items-center min-h-0">
+                        <div className="w-full flex flex-col md:flex-row justify-between items-center gap-4 bg-white dark:bg-white/5 p-5 rounded-[2rem] border border-modernBlue/10 shadow-lg mb-4 shrink-0">
+                            <div className="flex items-center gap-4">
+                                <div className="w-12 h-12 bg-modernBlue dark:bg-modernGold rounded-xl flex items-center justify-center text-white dark:text-modernBlue shadow-md">
+                                    <Icon name={currentRound.icon} size={24} />
+                                </div>
+                                <div className="text-left"><h2 className="text-xl font-black uppercase text-modernBlue dark:text-white ancient-font">{currentRound.name}</h2><span className="text-modernCrimson font-black uppercase tracking-widest text-[8px]">Arena Live</span></div>
+                            </div>
+                            <div className="flex items-center gap-3 bg-slate-100 dark:bg-black/20 p-2 rounded-xl">
+                                <button onClick={() => setCurrentQuestionNumber(prev => Math.max(1, prev - 1))} className="p-3 text-modernBlue dark:text-white hover:scale-110 active:scale-90 transition-transform"><Icon name="chevron-left" size={20}/></button>
+                                <div className="px-6 border-x border-slate-300 dark:border-white/10 text-center"><p className="text-[8px] font-black text-slate-500 uppercase">Question</p><p className="text-3xl font-mono font-black text-modernBlue dark:text-white">{currentQuestionNumber}/{currentRound.questions}</p></div>
+                                <button onClick={nextInquiry} className={`p-3 rounded-xl font-black uppercase text-xs flex items-center gap-2 hover:scale-105 active:scale-95 transition-all ${currentQuestionNumber === currentRound.questions ? 'bg-emerald-600 text-white' : 'text-modernBlue dark:text-modernGold'}`}>
+                                    {currentQuestionNumber === currentRound.questions ? 'Finish' : <Icon name="chevron-right" size={20}/>}
+                                </button>
+                            </div>
+                        </div>
+                        <div className="w-full flex-1 overflow-y-auto custom-scrollbar pr-2">
+                            <div className="grid grid-cols-2 md:grid-cols-3 gap-6 py-4">
+                                {TEAMS.map(team => (
+                                    <button key={team.id} onClick={() => setSelectedTeam(team.id)} className="group relative h-40 md:h-52 rounded-[2rem] overflow-hidden border-4 border-transparent hover:border-modernGold transition-all shadow-md">
+                                        <img src={team.banner} className="absolute inset-0 w-full h-full object-cover opacity-80 group-hover:scale-110 transition-transform" />
+                                        <div className="absolute inset-0 bg-gradient-to-t from-modernBlue/90 via-modernBlue/10 to-transparent"></div>
+                                        <div className="absolute top-4 left-4">
+                                            <Icon name={team.icon} size={32} className="text-modernGold drop-shadow-md" />
+                                        </div>
+                                        <div className="absolute bottom-6 right-6 bg-modernGold px-6 py-2 rounded-2xl shadow-2xl font-mono font-black text-modernBlue text-3xl md:text-6xl border-2 border-white/20 leading-none">
+                                            {scores[team.id] || 0}
+                                        </div>
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+                    </main>
+                    <div className="fixed bottom-6 right-6 z-[90]"><button onClick={undo} disabled={history.length === 0} className="flex items-center gap-2 px-6 py-3 bg-modernBlue text-white rounded-full shadow-2xl disabled:opacity-30 transition-all active:scale-95"><Icon name="rotate-ccw" size={16} /><span className="text-xs font-black">UNDO</span></button></div>
+                    {selectedTeam && activeTeamData && (
+                        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/90 backdrop-blur-md animate-in fade-in duration-300">
+                            <div className="bg-white dark:bg-vedic-900 w-full max-w-5xl rounded-[3rem] overflow-hidden shadow-2xl flex flex-col md:flex-row border-4 border-modernGold">
+                                <div className="hidden md:flex md:w-1/2 bg-slate-100 dark:bg-slate-950 items-center justify-center p-6 border-r border-modernGold/20">
+                                    {activeTeamData.banner ? <img src={activeTeamData.banner} className="max-w-full max-h-full object-contain rounded-2xl shadow-xl" /> : <div className="text-modernBlue dark:text-white uppercase font-black text-4xl">{activeTeamData.name}</div>}
+                                </div>
+                                <div className="w-full md:w-1/2 p-8 md:p-10 flex flex-col text-left justify-center">
+                                    <div className="flex justify-between items-start mb-6">
+                                        <div className="flex items-center gap-4"><RindaniPortrait size="w-16 h-16" showText={false} /><div><h4 className="text-modernGold font-black uppercase text-[10px] tracking-widest italic">Intercollegiate Competitions 2026</h4><h3 className="text-3xl font-black uppercase text-modernBlue dark:text-white tracking-tighter italic">{activeTeamData.name}</h3></div></div>
+                                        <button onClick={() => setSelectedTeam(null)} className="p-2 bg-slate-100 dark:bg-white/5 rounded-full border border-modernBlue/20"><Icon name="x" size={24}/></button>
+                                    </div>
+
+                                    {currentRound.isGuess && (
+                                        <div className="mb-4 p-4 bg-modernGold/10 border-2 border-modernGold rounded-2xl flex justify-between items-center shrink-0">
+                                            <span className="font-black text-modernBlue dark:text-modernGold text-xs uppercase">PHASE SUB-INQUIRY</span>
+                                            <span className="font-mono font-black text-modernBlue dark:text-modernGold text-3xl">{subQuestionIndex + 1}/3</span>
+                                        </div>
+                                    )}
+
+                                    {currentRound.isRapid && (
+                                        <div className="mb-4 p-4 bg-emerald-600/10 border-2 border-emerald-600 rounded-2xl flex justify-between items-center shrink-0">
+                                            <span className="font-black text-emerald-600 text-xs uppercase">RAPID&nbsp;&nbsp;&nbsp;SCORE&nbsp;&nbsp;&nbsp;COUNTER</span>
+                                            <span className="font-mono font-black text-emerald-600 text-3xl">{rapidCount} POINTS</span>
+                                        </div>
+                                    )}
+                                    
+                                    <div className="flex flex-col gap-6">
+                                        <button onClick={() => handleScore(true)} className="flex items-center justify-between p-8 bg-emerald-600 hover:bg-emerald-500 text-white rounded-[2.5rem] shadow-xl transition-all active:scale-95 group shrink-0">
+                                            <div className="flex flex-col"><span className="text-[10px] font-black uppercase opacity-80 mb-1">VALIDATION</span><span className="text-3xl font-black uppercase tracking-tight">CORRECT</span></div>
+                                            <span className="text-6xl font-mono font-black group-hover:scale-110 transition-transform">+{currentPotentialPoints}</span>
+                                        </button>
+
+                                        <div className="w-full">
+                                            {currentRound.id === 1 ? (
+                                                <button onClick={handlePass} className="w-full flex items-center justify-between p-8 bg-slate-500 hover:bg-slate-400 text-white rounded-[2.5rem] shadow-xl transition-all active:scale-95 group">
+                                                    <div className="flex flex-col">
+                                                        <span className="text-[10px] font-black uppercase opacity-80 mb-1">PASSING PHASE</span>
+                                                        <span className="text-3xl font-black uppercase tracking-tight">PASS</span>
+                                                    </div>
+                                                    <Icon name="share" size={48} className="transition-transform group-hover:rotate-12" />
+                                                </button>
+                                            ) : (
+                                                <button onClick={() => handleScore(false)} className="w-full flex items-center justify-between p-8 bg-modernCrimson hover:bg-red-500 text-white rounded-[2.5rem] shadow-xl transition-all active:scale-95 group">
+                                                    <div className="flex flex-col">
+                                                        <span className="text-[10px] font-black uppercase opacity-80 mb-1">VALIDATION</span>
+                                                        <span className="text-3xl font-black uppercase tracking-tight">WRONG</span>
+                                                    </div>
+                                                    <span className="text-6xl font-mono font-black group-hover:scale-110 transition-transform">
+                                                        {penaltyValue === 0 ? '0' : penaltyValue}
+                                                    </span>
+                                                </button>
+                                            )}
+                                        </div>
+
+                                        <button onClick={undo} disabled={history.length === 0} className="w-full py-4 border border-modernBlue/20 text-slate-400 hover:text-modernBlue hover:bg-slate-50 rounded-[1.5rem] font-black uppercase text-xs flex items-center justify-center gap-2 transition-all disabled:opacity-20 shrink-0">
+                                            <Icon name="rotate-ccw" size={16} /> UNDO LAST ACTION
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            );
+        };
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
